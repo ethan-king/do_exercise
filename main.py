@@ -223,7 +223,7 @@ app.layout = html.Div(
 		State('date_picker_1', 'end_date'),
 	]
 )
-def update_graph_view_count(none1, none2, start_date_1, end_date_1, start_date_2, end_date_2):
+def update_graph_view_count(none1, start_date_1, end_date_1,):
 	df = tutorialCt.reset_index()
 	df = df[(df['session_end_at']>= start_date_1) & (df['session_end_at']<= end_date_1)]
 
