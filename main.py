@@ -2,10 +2,7 @@
 This is my code for the Digital Ocean Data Engineer Interview Assignment.
 First the data across the three tables will be modeled with sessions as the fact table and tutorials and tags as
 dimension tables.
-- How much time are users spending on tutorial pages per day? How many tutorials are they viewing a day?
-- How often do individual users view tutorials? Daily? A few days a month?
-- What tutorial topics (tags) are most popular per day?
-- What tutorials are most popular per day?
+
 
 https://dse-interview.sfo2.digitaloceanspaces.com/DigitalOcean_Data_Science_Assignment.zip
 """
@@ -13,13 +10,10 @@ import io
 from zipfile import ZipFile
 import re
 import os
-import datetime
 
 import requests
 import pandas as pd
-import numpy as np
 import plotly.express as px
-import matplotlib.pyplot as plt
 
 from schemas import *
 
@@ -37,6 +31,7 @@ app = dash.Dash(__name__)
 app.title = 'Digital Ocean Assessment'
 server = app.server
 
+DATA_URL = 'https://dse-interview.sfo2.digitaloceanspaces.com/DigitalOcean_Data_Science_Assignment.zip'
 LOCAL_PATH_ZIP = 'DigitalOcean_Data_Science_Assignment.zip'
 OUTPUT_PATH = 'output'
 
@@ -56,7 +51,6 @@ def getZipData():
 			return ZipFile(LOCAL_PATH_ZIP)
 		else:
 			print('Downloading data from repo')
-			DATA_URL = 'https://dse-interview.sfo2.digitaloceanspaces.com/DigitalOcean_Data_Science_Assignment.zip'
 			data = requests.get(DATA_URL)
 			zipped = ZipFile(io.BytesIO(data.content))
 			return zipped
@@ -105,46 +99,6 @@ timeGroupDaily = pd.Grouper(key='session_end_at', freq='d')
 DATE_MIN = dataDict['sessions']['session_start_at'].min()#.to_pydatetime()
 DATE_MAX = dataDict['sessions']['session_end_at'].max()#.to_pydatetime()
 
-
-# # how much time are users spending on tutorial pages per day? how many tutorials are they viewing a day?
-# userViews = dataDict['sessions'].pivot_table(index='user_id', columns=[pd.Grouper(key='session_end_at', freq='d')], values='session_duration', aggfunc='count')
-# userViewsGrp = dataDict['sessions'].groupby(pd.Grouper(key='session_end_at', freq='M')).count()
-
-# plt.hist(tutorialCt['session_user', 'views_per_day'], weights=np.ones(tutorialCt.index.shape[0]) / tutorialCt.index.shape[0])
-
-# dailySlice = getSliceByYearMonthDay(dataDict['sessions'], 'session_end_at', 2019, 2, 1)
-# viewsPerDay = dailySlice.groupby(['user_id'])[['session_end_at']].count()
-# plt.hist(viewsPerDay['session_end_at'], weights=np.ones(viewsPerDay.index.shape[0]) / viewsPerDay.index.shape[0])
-# bins=np.arange(1, 15, 1)
-
-# # get a month slice of the dataset by filtering session_end_at
-# monthlySlice = getSliceByYearMonth(dataDict['sessions'], 'session_end_at', 2019, 2)
-# dailyViews = monthlySlice.groupby(['user_id'])[['session_end_at']].count() # use 30 as a standard normalizing factor
-
-
-# plt.hist(dailyViews['session_end_at'], bins=np.arange(1, 15, 1), weights=np.ones(dailyViews.index.shape[0]) / dailyViews.index.shape[0])
-# plt.gca().set_xlim([0, 2])
-# plt.show()
-
-# # get a year slice
-# yearlySlice = getSliceByYear(dataDict['sessions'], 'session_end_at', 2019)
-# monthlyViews = yearlySlice.groupby(['user_id'])[['session_end_at']].count() #/ 12
-#
-# plt.hist(monthlyViews['session_end_at'], bins=np.arange(0, 4, 0.25))
-# # plt.gca().set_xlim([0, 10])
-# plt.show()
-#
-# most popular tags by day
-# # sessions: get count of how many times each tagID accessed each day
-# monthlyTags = monthlySlice.join(dataDict['tutorials'], how ='left').merge(dataDict['tags'], left_on='tag_id', right_on='id', how='left')
-# dailyTags = monthlyTags.groupby([timeGroupDaily, 'name'])[['tag_id']].count().sort_values(by=['session_end_at', 'tag_id'], ascending=[True, False])#.sort_index(level=[0,1], sort_remaining=False)
-# dailyTags = dailyTags.groupby('session_end_at').head(10)
-# #
-# # most popular tutorials per day
-# dailyTutorials = monthlyTags.groupby([timeGroupDaily, 'title'])[['user_id']].count().sort_values(by=['session_end_at', 'user_id'], ascending=[True, False])
-# dailyTutorials = dailyTutorials.groupby('session_end_at').head(10)
-
-
 ################ Plotly
 # Layout
 app.layout = html.Div(
@@ -187,8 +141,6 @@ app.layout = html.Div(
 				)
 			], #style={'display': 'inline-block'}
 		),
-		html.Div([]),
-		# html.Div([], style={'border-top': '1px solid black', 'marginBottom': '30px'}),
 		html.Div(
 			[
 				html.H3('User View Count & Top 10 List Date Range:', style={'paddingRight': '30px', 'font-family':'sans-serif', 'color':'white'}),
@@ -231,17 +183,6 @@ app.layout = html.Div(
 				),
 			], #style={'display': 'inline-block'}
 		),
-		#
-		#
-		# dcc.Graph(
-		# 	id='user_view_count_graph'
-		# ),
-		# dcc.Graph(
-		# 	id='top_tags'
-		# ),
-		# dcc.Graph(
-		# 	id='top_tutorials'
-		# ),
 		html.Div(id='none', children=[], style={'display': 'none'})
 	]
 )
@@ -365,4 +306,5 @@ def update_user_view_ct_top_10(none, start_date_2, end_date_2):
 	return userViewCount, top_tag_fig, top_tutorial_fig
 
 if __name__ == '__main__':
-	app.run_server()
+	# app.run_server()
+	print('ready')
