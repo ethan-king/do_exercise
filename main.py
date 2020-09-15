@@ -34,12 +34,16 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
+import dash_table
 
 app = dash.Dash(__name__)
 app.title = 'Digital Ocean Assessment'
 server = app.server
 
-LOCAL_PATH = 'DigitalOcean_Data_Science_Assignment.zip'
+LOCAL_PATH_ZIP = 'DigitalOcean_Data_Science_Assignment.zip'
+if not os.path.exists('output'):
+    os.makedirs('output')
+OUTPUT_PATH = 'output'
 
 def getZipData():
 	"""
@@ -48,9 +52,9 @@ def getZipData():
 	:return: a dictionary containing the three datasets
 	"""
 	def openLocalOrRepo():
-		if os.path.exists(LOCAL_PATH):
-			print('opening local zip file')
-			return ZipFile(LOCAL_PATH)
+		if os.path.exists(LOCAL_PATH_ZIP):
+			print('Opening local zip file')
+			return ZipFile(LOCAL_PATH_ZIP)
 		else:
 			print('Downloading data from repo')
 			DATA_URL = 'https://dse-interview.sfo2.digitaloceanspaces.com/DigitalOcean_Data_Science_Assignment.zip'
@@ -70,14 +74,17 @@ def unzipToDict():
 	dfs = {}
 	for info in zipped.filelist:
 		if re.match(r'^.+/(sessions.csv)$', info.filename):
+			print('sessions')
 			df = pd.read_csv(io.BytesIO(zipped.read(info.filename)), dtype=SESSION_SCHEMA, parse_dates=['session_start_at', 'session_end_at'], index_col=['tutorial_id'])
 			df['session_duration'] = df['session_end_at'] - df['session_start_at']
 			dfs['sessions'] = df
 		elif re.match(r'^.+/(tutorials.csv)$', info.filename):
+			print('tutorials')
 			df = pd.read_csv(io.BytesIO(zipped.read(info.filename)), dtype=TUTORIALS_SCHEMA, parse_dates=['created_at'], index_col=['tutorial_id'])
 			df = df.drop(['slug', 'description', 'created_at'], axis=1)
 			dfs['tutorials'] = df
 		elif re.match(r'^.+/(tags.csv)$', info.filename):
+			print('tags')
 			df = pd.read_csv(io.BytesIO(zipped.read(info.filename)), dtype=TAGS_SCHEMA,)
 			df = df.drop(['description', 'tag_type'], axis=1)
 			dfs['tags'] = df
@@ -103,7 +110,7 @@ DATE_MAX = dataDict['sessions']['session_end_at'].max()#.to_pydatetime()
 tutorialCt = dataDict['sessions'].groupby(timeGroupDaily)[['session_duration', 'user_id']].agg(
 	{'session_duration': ['count', 'sum'], 'user_id': pd.Series.nunique})
 tutorialCt['session_user', 'avg'] = tutorialCt['session_duration', 'sum'] / tutorialCt['user_id', 'nunique']
-tutorialCt['session_user', 'views_per_day'] = tutorialCt['session_duration', 'count'] / tutorialCt['user_id', 'nunique']
+tutorialCt['session_user', 'sessions_per_user'] = tutorialCt['session_duration', 'count'] / tutorialCt['user_id', 'nunique']
 # # how much time are users spending on tutorial pages per day? how many tutorials are they viewing a day?
 # userViews = dataDict['sessions'].pivot_table(index='user_id', columns=[pd.Grouper(key='session_end_at', freq='d')], values='session_duration', aggfunc='count')
 # userViewsGrp = dataDict['sessions'].groupby(pd.Grouper(key='session_end_at', freq='M')).count()
@@ -150,7 +157,7 @@ app.layout = html.Div(
 	[
 		html.Div(
 			[
-				html.H3('Daily Stats Date Range:', style={'paddingRight': '30px'}),
+				html.H3('Daily Views and Avg Session Length Date Range:', style={'paddingRight': '30px'}),
 				dcc.DatePickerRange(
 							id='date_picker_1',
 							min_date_allowed=DATE_MIN,
@@ -167,15 +174,10 @@ app.layout = html.Div(
 			], style={'display': 'inline-block', 'verticalAlign': 'top', 'width': '35%'}
 		),
 		dcc.Graph(
-			id='view_count_graph',
-			figure =
-				{
-				'data': [{'x':[1,2], 'y':[3,1]}],
-				'layout': {'title':'Default Title'}
-				}
+			id='time_spent_graph'
 		),
 		dcc.Graph(
-			id='time_spent_graph'
+			id='view_count_graph',
 		),
 		html.Div([], style={'border-top': '1px solid black', 'marginBottom': '30px'}),
 		html.Div(
@@ -215,9 +217,7 @@ app.layout = html.Div(
 		Output('view_count_graph', 'figure'),
 		Output('time_spent_graph', 'figure'),
 	],
-	[
-		Input('submit_button_1', 'n_clicks'),
-	],
+	[Input('submit_button_1', 'n_clicks'),],
 	[
 		State('date_picker_1', 'start_date'),
 		State('date_picker_1', 'end_date'),
@@ -240,6 +240,13 @@ def update_graph_view_count(none1, start_date_1, end_date_1,):
 		'data': dailyTimeTrace,
 		'layout': {'title': 'Daily Average User Session Length (minutes)', 'height': 300}
 	}
+	start_date_ft = start_date_1[:10]
+	end_date_ft = end_date_1[:10]
+	try:
+		pd.DataFrame.to_csv(df, os.path.join(OUTPUT_PATH, f'tutorial_daily_views_{start_date_ft}_{end_date_ft}.csv'))
+	except FileNotFoundError:
+		print('Create the directory "output"')
+
 	return tutorialViews, tutorialTime
 
 # update dashboard
@@ -249,9 +256,7 @@ def update_graph_view_count(none1, start_date_1, end_date_1,):
 		Output('top_tags', 'figure'),
 		Output('top_tutorials', 'figure'),
 	],
-	[
-		Input('submit_button_2', 'n_clicks'),
-	],
+	[Input('submit_button_2', 'n_clicks')],
 	[
 		State('date_picker_2', 'start_date'),
 		State('date_picker_2', 'end_date'),
@@ -266,8 +271,16 @@ def update_user_view_ct_top_10(none, start_date_2, end_date_2):
 	userViewCountTrace= [{'x': userViewCountData['tutorial_id'], 'type': 'histogram', 'histnorm': 'percent', 'xbins':{'start':0, 'end':40, 'size':1}}]
 	userViewCount = {
 		'data': userViewCountTrace,
-		'layout': {'title': 'User View Count Distribution', 'height': 300}
+		'layout': {'title': 'User View Count Distribution', 'height': 300, 'yaxis': {'title': {'text': 'percentage'}}}
 	}
+	start_date_ft = start_date_2[:10]
+	end_date_ft = end_date_2[:10]
+	try:
+		print('Saving userViewCountData to output directory')
+		userViewCountData.to_csv(os.path.join(OUTPUT_PATH, f'user_view_count_{start_date_ft}_{end_date_ft}.csv'))
+	except FileNotFoundError:
+		print('Create the directory "output"')
+
 
 	df3 = dataDict['sessions']
 	df3 = df3[(df3['session_end_at'] >= start_date_2) & (df3['session_end_at'] <= end_date_2)]
@@ -275,14 +288,21 @@ def update_user_view_ct_top_10(none, start_date_2, end_date_2):
 																			 right_on='id', how='left')
 	dailyTags = df3_tags.groupby([timeGroupDaily, 'name'])[['tag_id']].count().sort_values(
 		by=['session_end_at', 'tag_id'], ascending=[True, False])  # .sort_index(level=[0,1], sort_remaining=False)
-	dailyTags = dailyTags.groupby('session_end_at').head(10)
-	top_tag_fig = px.bar(dailyTags.reset_index(), x="session_end_at", y="tag_id", color="name", title="Daily Top 10 Tags")
+	dailyTags = dailyTags.rename({'tag_id': 'count'}, axis=1)
+	dailyTags10 = dailyTags.groupby('session_end_at').head(10).reset_index()
+	top_tag_fig = px.bar(dailyTags10, x="session_end_at", y="count", color="name", title="Daily Top 10 Tags")
 
 	dailyTutorials = df3_tags.groupby([timeGroupDaily, 'title'])[['tag_id']].count().sort_values(
 		by=['session_end_at', 'tag_id'], ascending=[True, False])
-	dailyTutorials = dailyTutorials.groupby('session_end_at').head(10)
+	dailyTutorials = dailyTutorials.rename({'tag_id': 'count'}, axis=1)
+	dailyTutorials10 = dailyTutorials.groupby('session_end_at').head(10).reset_index()
+	top_tutorial_fig = px.bar(dailyTutorials10, x="session_end_at", y="count", color="title", title="Daily Top 10 Tutorials")
 
-	top_tutorial_fig = px.bar(dailyTutorials.reset_index(), x="session_end_at", y="tag_id", color="title", title="Daily Top 10 Tutorials")
+	try:
+		dailyTags.to_csv(os.path.join(OUTPUT_PATH, f'daily_top_tags_{start_date_ft}_{end_date_ft}.csv'))
+		dailyTutorials.to_csv(os.path.join(OUTPUT_PATH, f'daily_top_tutorials_{start_date_ft}_{end_date_ft}.csv'))
+	except FileNotFoundError:
+		print('Create the directory "output"')
 
 	return userViewCount, top_tag_fig, top_tutorial_fig
 
