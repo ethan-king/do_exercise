@@ -14,10 +14,11 @@ csv's of output tables are available here:
 
 
 ## Running the script:
-1. Install the packages listed in requirements.txt
-2. Optionally, place a saved copy of the .zip file from the repo in the same directory as main.py to improve startup time
-3. Run main.py, waiting for the flask app to load.
-4. Open http://127.0.0.1:8050/
+1. Clone the github repo
+2. Install the packages listed in requirements.txt
+3. Optionally, place a saved copy of the .zip file from the repo in the same directory as main.py to improve startup time
+4. Run main.py, waiting for the flask app to load.
+5. Open http://127.0.0.1:8050/
 
 ## Using the Dashboard
 - The first section allows the user to select a date range for daily summary statistics and average user session length 
