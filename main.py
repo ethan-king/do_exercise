@@ -151,7 +151,7 @@ app.layout = html.Div(
 	[
 		html.Div(
 			[
-				html.H3('Daily Views and Avg Session Length Date Range:', style={'paddingRight': '30px'}),
+				html.H3('Daily Views and Avg Session Length Date Range:', style={'paddingRight': '30px', 'font-family':'sans-serif', 'color':'white'}),
 				dcc.DatePickerRange(
 							id='date_picker_1',
 							min_date_allowed=DATE_MIN,
@@ -191,7 +191,7 @@ app.layout = html.Div(
 		# html.Div([], style={'border-top': '1px solid black', 'marginBottom': '30px'}),
 		html.Div(
 			[
-				html.H3('User View Count & Top 10 List Date Range:', style={'paddingRight': '30px'}),
+				html.H3('User View Count & Top 10 List Date Range:', style={'paddingRight': '30px', 'font-family':'sans-serif', 'color':'white'}),
 				dcc.DatePickerRange(
 							id='date_picker_2',
 							min_date_allowed=DATE_MIN,
@@ -211,13 +211,13 @@ app.layout = html.Div(
 			[
 				html.Div(
 					[
-						dcc.Graph(id='user_view_count_graph'),
-					], style= {'display': 'inline-block', 'width': '49%'}
+						dcc.Graph(id='top_tags'),
+					], style= {'display': 'inline-block', 'width': '59%'}
 				),
 				html.Div(
 					[
-						dcc.Graph(id='top_tags')
-					], style={'display': 'inline-block', 'width': '49%'}
+						dcc.Graph(id='user_view_count_graph')
+					], style={'display': 'inline-block', 'width': '39%'}
 				),
 				html.Div(
 					[
@@ -326,7 +326,7 @@ def update_user_view_ct_top_10(none, start_date_2, end_date_2):
 	df2 = df2[(df2['session_end_at']>= start_date_2) & (df2['session_end_at']<= end_date_2)]
 	userViewCountData = df2.groupby(['user_id'])[['tutorial_id']].count()
 
-	userViewCountTrace= [{'x': userViewCountData['tutorial_id'], 'type': 'histogram', 'histnorm': 'percent', 'xbins':{'start':0, 'end':40, 'size':1}}]
+	userViewCountTrace= [{'x': userViewCountData['tutorial_id'], 'type': 'histogram', 'histnorm': 'percent', 'xbins':{'start':0, 'end':50, 'size':1}}] #
 	userViewCount = {
 		'data': userViewCountTrace,
 		'layout': {'title': {'text': 'User View Count Distribution', 'xanchor': 'left', 'x':.15}, 'height': 300, 'yaxis': {'title': {'text': 'percentage'}}}
@@ -352,7 +352,7 @@ def update_user_view_ct_top_10(none, start_date_2, end_date_2):
 		by=['session_end_at', 'tag_id'], ascending=[True, False])
 	dailyTutorials = dailyTutorials.rename({'tag_id': 'count'}, axis=1)
 	dailyTutorials10 = dailyTutorials.groupby('session_end_at').head(10).reset_index()
-	top_tutorial_fig = px.bar(dailyTutorials10, x="session_end_at", y="count", color="title", title="Daily Top 10 Tutorials", height=300)
+	top_tutorial_fig = px.bar(dailyTutorials10, x="session_end_at", y="count", color="title", title="Daily Top 10 Tutorials", height=400)
 
 	try:
 		print('Saving daily_top_tags to output directory')
