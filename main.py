@@ -23,27 +23,26 @@ import matplotlib.pyplot as plt
 
 from schemas import *
 
-
-pd.set_option('display.max_rows', 500)
-pd.set_option('display.max_columns', 500)
-pd.set_option('display.width', 1000)
-
-
 ## DASH
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
-import dash_table
+
+pd.set_option('display.max_rows', 500)
+pd.set_option('display.max_columns', 500)
+pd.set_option('display.width', 1000)
 
 app = dash.Dash(__name__)
 app.title = 'Digital Ocean Assessment'
 server = app.server
 
 LOCAL_PATH_ZIP = 'DigitalOcean_Data_Science_Assignment.zip'
+OUTPUT_PATH = 'output'
+
+# check if the /output folder exists, if not, create it
 if not os.path.exists('output'):
     os.makedirs('output')
-OUTPUT_PATH = 'output'
 
 def getZipData():
 	"""
@@ -106,11 +105,7 @@ timeGroupDaily = pd.Grouper(key='session_end_at', freq='d')
 DATE_MIN = dataDict['sessions']['session_start_at'].min()#.to_pydatetime()
 DATE_MAX = dataDict['sessions']['session_end_at'].max()#.to_pydatetime()
 
-# time and count of tutorials
-tutorialCt = dataDict['sessions'].groupby(timeGroupDaily)[['session_duration', 'user_id']].agg(
-	{'session_duration': ['count', 'sum'], 'user_id': pd.Series.nunique})
-tutorialCt['session_user', 'avg'] = tutorialCt['session_duration', 'sum'] / tutorialCt['user_id', 'nunique']
-tutorialCt['session_user', 'sessions_per_user'] = tutorialCt['session_duration', 'count'] / tutorialCt['user_id', 'nunique']
+
 # # how much time are users spending on tutorial pages per day? how many tutorials are they viewing a day?
 # userViews = dataDict['sessions'].pivot_table(index='user_id', columns=[pd.Grouper(key='session_end_at', freq='d')], values='session_duration', aggfunc='count')
 # userViewsGrp = dataDict['sessions'].groupby(pd.Grouper(key='session_end_at', freq='M')).count()
@@ -152,7 +147,6 @@ tutorialCt['session_user', 'sessions_per_user'] = tutorialCt['session_duration',
 
 ################ Plotly
 # Layout
-
 app.layout = html.Div(
 	[
 		html.Div(
@@ -171,15 +165,30 @@ app.layout = html.Div(
 					children='Submit',
 					style={'fontSize':24, 'marginLeft':'30px', 'marginTop': '5px'}
 				)
-			], style={'display': 'inline-block', 'verticalAlign': 'top', 'width': '35%'}
+			], style={'display': 'inline-block', 'verticalAlign': 'top', 'background-color': '#006aff', 'width': '100%'}
 		),
-		dcc.Graph(
-			id='time_spent_graph'
+		html.Div([]),
+		html.Div(
+			[
+				html.Div(
+					[
+						dcc.Graph(
+							id='view_count_graph',
+						),
+						dcc.Graph(
+							id='time_spent_graph'
+						),
+					], style= {'display': 'inline-block', 'width': '49%'}
+				),
+				html.Div(
+					[
+						dcc.Graph(id='user_avg_session_graph')
+					], style= {'display': 'inline-block', 'width': '49%'}
+				)
+			], #style={'display': 'inline-block'}
 		),
-		dcc.Graph(
-			id='view_count_graph',
-		),
-		html.Div([], style={'border-top': '1px solid black', 'marginBottom': '30px'}),
+		html.Div([]),
+		# html.Div([], style={'border-top': '1px solid black', 'marginBottom': '30px'}),
 		html.Div(
 			[
 				html.H3('User View Count & Top 10 List Date Range:', style={'paddingRight': '30px'}),
@@ -196,26 +205,53 @@ app.layout = html.Div(
 					children='Submit',
 					style={'fontSize':24, 'marginLeft':'30px', 'marginTop': '5px'}
 				)
-			], style={'display': 'inline-block', 'width': '35%'}
+			], style={'display': 'inline-block', 'background-color': '#006aff', 'width': '100%'} #
 		),
-
-		dcc.Graph(
-			id='user_view_count_graph'
+		html.Div(
+			[
+				html.Div(
+					[
+						dcc.Graph(id='user_view_count_graph'),
+					], style= {'display': 'inline-block', 'width': '49%'}
+				),
+				html.Div(
+					[
+						dcc.Graph(id='top_tags')
+					], style={'display': 'inline-block', 'width': '49%'}
+				),
+				html.Div(
+					[
+						# dcc.Graph(
+						# 	id='top_tags'
+						# ),
+						dcc.Graph(
+							id='top_tutorials',
+						),
+					], style= {'display': 'inline-block', 'width': '100%'}
+				),
+			], #style={'display': 'inline-block'}
 		),
-		dcc.Graph(
-			id='top_tags'
-		),
-		dcc.Graph(
-			id='top_tutorials'
-		),
+		#
+		#
+		# dcc.Graph(
+		# 	id='user_view_count_graph'
+		# ),
+		# dcc.Graph(
+		# 	id='top_tags'
+		# ),
+		# dcc.Graph(
+		# 	id='top_tutorials'
+		# ),
 		html.Div(id='none', children=[], style={'display': 'none'})
 	]
 )
+
 # update dashboard
 @app.callback(
 	[
 		Output('view_count_graph', 'figure'),
 		Output('time_spent_graph', 'figure'),
+		Output('user_avg_session_graph', 'figure')
 	],
 	[Input('submit_button_1', 'n_clicks'),],
 	[
@@ -224,30 +260,50 @@ app.layout = html.Div(
 	]
 )
 def update_graph_view_count(none1, start_date_1, end_date_1,):
-	df = tutorialCt.reset_index()
-	df = df[(df['session_end_at']>= start_date_1) & (df['session_end_at']<= end_date_1)]
+	start_date_ft = start_date_1[:10]
+	end_date_ft = end_date_1[:10]
+	# time and count of tutorials
+	data = dataDict['sessions']
+	data = data[(data['session_end_at']>= start_date_1) & (data['session_end_at']<= end_date_1)]
 
+	tutorialCt = data.groupby(timeGroupDaily)[['session_duration', 'user_id']].agg(
+		{'session_duration': ['count', 'sum'], 'user_id': pd.Series.nunique})
+	tutorialCt['session_user', 'avg'] = tutorialCt['session_duration', 'sum'] / tutorialCt['user_id', 'nunique']
+	tutorialCt['session_user', 'sessions_per_user'] = tutorialCt['session_duration', 'count'] / tutorialCt[
+		'user_id', 'nunique']
+	df = tutorialCt.reset_index()
 	dailyViewTrace = []
-	dailyViewTrace.append({'x': df['session_end_at'], 'y': df['session_duration', 'count']})
+	dailyViewTrace.append({'x': df['session_end_at'], 'y': df['session_duration', 'count'], 'name': 'Number of Sessions'})
+	dailyViewTrace.append({'x': df['session_end_at'], 'y': df['user_id', 'nunique'], 'name':'Number of Users'})
 	tutorialViews = {
 		'data': dailyViewTrace,
-		'layout': {'title': "Daily Tutorial View Count", 'height': 300}
+		'layout': {'title': "Daily Tutorial View Count", 'height': 300, 'showlegend': False}
 	}
 
 	dailyTimeTrace = []
-	dailyTimeTrace.append({'x': df['session_end_at'], 'y': df['session_user', 'avg'].dt.seconds/60})
+	dailyTimeTrace.append({'x': df['session_end_at'], 'y': df['session_user', 'avg'].dt.seconds/60, 'name': 'Average Session'})
 	tutorialTime = {
 		'data': dailyTimeTrace,
-		'layout': {'title': 'Daily Average User Session Length (minutes)', 'height': 300}
+		'layout': {'title': 'Daily Average User Session Length (minutes)', 'height': 300, 'showlegend': False}
 	}
-	start_date_ft = start_date_1[:10]
-	end_date_ft = end_date_1[:10]
+	data['session_duration_seconds'] = data['session_duration'].dt.seconds/60
+	userAvgSessionDuration = data.groupby('user_id')[['session_duration_seconds']].mean()
+	userAvgSessionDuration = userAvgSessionDuration.rename({'session_duration_seconds': 'session_duration_avg'}, axis=1)
+	userAvgSessionDurationTrace = [{'x': userAvgSessionDuration['session_duration_avg'], 'type': 'histogram', 'histnorm': 'percent', 'xbins':{'start':0, 'end':60, 'size':1}}]
+	userAvgSessionDurationHist = {
+		'data': userAvgSessionDurationTrace,
+		'layout': {'title': 'User Average Session Duration', 'height': 600, 'yaxis': {'title': {'text': 'percentage'}}}
+	}
+
 	try:
+		print('Saving tutorial_daily_views to output directory')
 		pd.DataFrame.to_csv(df, os.path.join(OUTPUT_PATH, f'tutorial_daily_views_{start_date_ft}_{end_date_ft}.csv'))
+		print('Saving user_avg_session to output directory')
+		pd.DataFrame.to_csv(userAvgSessionDuration, os.path.join(OUTPUT_PATH, f'user_avg_session_{start_date_ft}_{end_date_ft}.csv'))
 	except FileNotFoundError:
 		print('Create the directory "output"')
 
-	return tutorialViews, tutorialTime
+	return tutorialViews, tutorialTime, userAvgSessionDurationHist
 
 # update dashboard
 @app.callback(
@@ -263,6 +319,8 @@ def update_graph_view_count(none1, start_date_1, end_date_1,):
 	]
 )
 def update_user_view_ct_top_10(none, start_date_2, end_date_2):
+	start_date_ft = start_date_2[:10]
+	end_date_ft = end_date_2[:10]
 	df2	= dataDict['sessions'].reset_index()
 
 	df2 = df2[(df2['session_end_at']>= start_date_2) & (df2['session_end_at']<= end_date_2)]
@@ -271,12 +329,10 @@ def update_user_view_ct_top_10(none, start_date_2, end_date_2):
 	userViewCountTrace= [{'x': userViewCountData['tutorial_id'], 'type': 'histogram', 'histnorm': 'percent', 'xbins':{'start':0, 'end':40, 'size':1}}]
 	userViewCount = {
 		'data': userViewCountTrace,
-		'layout': {'title': 'User View Count Distribution', 'height': 300, 'yaxis': {'title': {'text': 'percentage'}}}
+		'layout': {'title': {'text': 'User View Count Distribution', 'xanchor': 'left', 'x':.15}, 'height': 300, 'yaxis': {'title': {'text': 'percentage'}}}
 	}
-	start_date_ft = start_date_2[:10]
-	end_date_ft = end_date_2[:10]
 	try:
-		print('Saving userViewCountData to output directory')
+		print('Saving user_view_count data to output directory')
 		userViewCountData.to_csv(os.path.join(OUTPUT_PATH, f'user_view_count_{start_date_ft}_{end_date_ft}.csv'))
 	except FileNotFoundError:
 		print('Create the directory "output"')
@@ -290,16 +346,18 @@ def update_user_view_ct_top_10(none, start_date_2, end_date_2):
 		by=['session_end_at', 'tag_id'], ascending=[True, False])  # .sort_index(level=[0,1], sort_remaining=False)
 	dailyTags = dailyTags.rename({'tag_id': 'count'}, axis=1)
 	dailyTags10 = dailyTags.groupby('session_end_at').head(10).reset_index()
-	top_tag_fig = px.bar(dailyTags10, x="session_end_at", y="count", color="name", title="Daily Top 10 Tags")
+	top_tag_fig = px.bar(dailyTags10, x="session_end_at", y="count", color="name", title="Daily Top 10 Tags", height=300)
 
 	dailyTutorials = df3_tags.groupby([timeGroupDaily, 'title'])[['tag_id']].count().sort_values(
 		by=['session_end_at', 'tag_id'], ascending=[True, False])
 	dailyTutorials = dailyTutorials.rename({'tag_id': 'count'}, axis=1)
 	dailyTutorials10 = dailyTutorials.groupby('session_end_at').head(10).reset_index()
-	top_tutorial_fig = px.bar(dailyTutorials10, x="session_end_at", y="count", color="title", title="Daily Top 10 Tutorials")
+	top_tutorial_fig = px.bar(dailyTutorials10, x="session_end_at", y="count", color="title", title="Daily Top 10 Tutorials", height=300)
 
 	try:
+		print('Saving daily_top_tags to output directory')
 		dailyTags.to_csv(os.path.join(OUTPUT_PATH, f'daily_top_tags_{start_date_ft}_{end_date_ft}.csv'))
+		print('Saving daily_top_tutorials to output directory')
 		dailyTutorials.to_csv(os.path.join(OUTPUT_PATH, f'daily_top_tutorials_{start_date_ft}_{end_date_ft}.csv'))
 	except FileNotFoundError:
 		print('Create the directory "output"')
@@ -308,4 +366,3 @@ def update_user_view_ct_top_10(none, start_date_2, end_date_2):
 
 if __name__ == '__main__':
 	app.run_server()
-	# print('ready')
