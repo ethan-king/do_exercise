@@ -236,13 +236,13 @@ def update_graph_view_count(none1, start_date_1, end_date_1,):
 		'layout': {'title': 'User Average Session Duration', 'height': 600, 'yaxis': {'title': {'text': 'percentage'}}}
 	}
 
-	try:
-		print('Saving tutorial_daily_views to output directory')
-		pd.DataFrame.to_csv(df, os.path.join(OUTPUT_PATH, f'tutorial_daily_views_{start_date_ft}_{end_date_ft}.csv'))
-		print('Saving user_avg_session to output directory')
-		pd.DataFrame.to_csv(userAvgSessionDuration, os.path.join(OUTPUT_PATH, f'user_avg_session_{start_date_ft}_{end_date_ft}.csv'))
-	except FileNotFoundError:
-		print('Create the directory "output"')
+	# try:
+	# 	print('Saving tutorial_daily_views to output directory')
+	# 	pd.DataFrame.to_csv(df, os.path.join(OUTPUT_PATH, f'tutorial_daily_views_{start_date_ft}_{end_date_ft}.csv'))
+	# 	print('Saving user_avg_session to output directory')
+	# 	pd.DataFrame.to_csv(userAvgSessionDuration, os.path.join(OUTPUT_PATH, f'user_avg_session_{start_date_ft}_{end_date_ft}.csv'))
+	# except FileNotFoundError:
+	# 	print('Create the directory "output"')
 
 	return tutorialViews, tutorialTime, userAvgSessionDurationHist
 
@@ -272,11 +272,11 @@ def update_user_view_ct_top_10(none, start_date_2, end_date_2):
 		'data': userViewCountTrace,
 		'layout': {'title': {'text': 'User View Count Distribution', 'xanchor': 'left', 'x':.15}, 'height': 300, 'yaxis': {'title': {'text': 'percentage'}}}
 	}
-	try:
-		print('Saving user_view_count data to output directory')
-		userViewCountData.to_csv(os.path.join(OUTPUT_PATH, f'user_view_count_{start_date_ft}_{end_date_ft}.csv'))
-	except FileNotFoundError:
-		print('Create the directory "output"')
+	# try:
+	# 	print('Saving user_view_count data to output directory')
+	# 	userViewCountData.to_csv(os.path.join(OUTPUT_PATH, f'user_view_count_{start_date_ft}_{end_date_ft}.csv'))
+	# except FileNotFoundError:
+	# 	print('Create the directory "output"')
 
 
 	df3 = dataDict['sessions']
@@ -295,13 +295,13 @@ def update_user_view_ct_top_10(none, start_date_2, end_date_2):
 	dailyTutorials10 = dailyTutorials.groupby('session_end_at').head(10).reset_index()
 	top_tutorial_fig = px.bar(dailyTutorials10, x="session_end_at", y="count", color="title", title="Daily Top 10 Tutorials", height=400)
 
-	try:
-		print('Saving daily_top_tags to output directory')
-		dailyTags.to_csv(os.path.join(OUTPUT_PATH, f'daily_top_tags_{start_date_ft}_{end_date_ft}.csv'))
-		print('Saving daily_top_tutorials to output directory')
-		dailyTutorials.to_csv(os.path.join(OUTPUT_PATH, f'daily_top_tutorials_{start_date_ft}_{end_date_ft}.csv'))
-	except FileNotFoundError:
-		print('Create the directory "output"')
+	# try:
+	# 	print('Saving daily_top_tags to output directory')
+	# 	dailyTags.to_csv(os.path.join(OUTPUT_PATH, f'daily_top_tags_{start_date_ft}_{end_date_ft}.csv'))
+	# 	print('Saving daily_top_tutorials to output directory')
+	# 	dailyTutorials.to_csv(os.path.join(OUTPUT_PATH, f'daily_top_tutorials_{start_date_ft}_{end_date_ft}.csv'))
+	# except FileNotFoundError:
+	# 	print('Create the directory "output"')
 
 	return userViewCount, top_tag_fig, top_tutorial_fig
 
